@@ -10,5 +10,10 @@ def review_diff() -> str:
     with open(os.path.join(os.path.dirname(__file__), 'review.md'), 'r', encoding='utf-8') as f:
         return f.read()
 
+@mcp.tool()
+def count_files(path: str) -> int:
+    """Count the number of files in a directory"""
+    return len(os.listdir(path))
+
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
