@@ -6,6 +6,7 @@ requires-python = ">=3.13"
 members = [
     "handson-1",
     "handson-2",
+    "handson-3",
     "handson-mcp-server",
 ]
 
@@ -194,6 +195,17 @@ requires-dist = [{ name = "mcp", extras = ["cli"], specifier = ">=1.24.0" }]
 name = "handson-2"
 version = "0.1.0"
 source = { virtual = "handson-2" }
+dependencies = [
+    { name = "mcp", extra = ["cli"] },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mcp", extras = ["cli"], specifier = ">=1.24.0" }]
+
+[[package]]
+name = "handson-3"
+version = "0.1.0"
+source = { virtual = "handson-3" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
 ]

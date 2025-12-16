@@ -1,4 +1,3 @@
-import os
 from mcp.server.fastmcp import FastMCP
 
 # Create an MCP server
@@ -23,8 +22,11 @@ def greet_user(name: str, style: str = "friendly") -> str:
 @mcp.prompt()
 def review_diff() -> str:
     """Review a code diff"""
-    with open(os.path.join(os.path.dirname(__file__), 'review.md'), 'r', encoding='utf-8') as f:
-        return f.read()
+    return (
+        'あなたは優秀なテックリードであり、コードレビューの責任者です。\n' +
+        '以下に貼り付けるテキストは、開発中のソースコードに対する `git diff` の出力結果です。\n' +
+        'これらを解析し、コミットする前に修正すべき点がないかレビューしてください。'
+    )
 
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
