@@ -11,4 +11,5 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "handson-1",
+    "handson-2",
 ]
