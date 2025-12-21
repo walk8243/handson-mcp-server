@@ -228,3 +228,133 @@ uv run --with mcp main.py
 - そのプロンプトにコード差分を追加して、コードレビューを依頼できます
 
 MCPサーバのプロンプト機能が正常に動作していることが確認できるはずです。
+
+## handson-3
+
+MCPサーバでローカルファイルやWebリクエストを使った処理を実装し、実用的なツールやプロンプトを作成する方法を学びます。
+
+1. **ローカルファイルの読み取り** - ファイルシステムからファイルを読み取ってプロンプトやツールで利用
+2. **Webリクエストの処理** - HTTPリクエストを送信して外部APIからデータを取得
+
+handson-1、handson-2で作成した `mcp-sample` ディレクトリをそのまま使用します。
+
+### ローカルファイルを使った処理
+
+MCPサーバでは、ローカルファイルシステムにアクセスしてファイルを読み取ることができます。これにより、設定ファイルの読み取り、ログファイルの解析、プロジェクト構造の把握などが可能になります。
+
+handson-2では、プロンプトの内容を直接コード内に記述しましたが、より長いプロンプトやテンプレート化したい場合は、外部ファイルとして保存して読み取る方法が便利です。
+
+まず、プロンプトの内容をファイルとして保存します。`review.md` というファイルを作成し、コードレビュー用のプロンプトテンプレートを記述します。
+
+次に、`main.py` にローカルファイルを読み取るプロンプトを追加します。
+
+```python
+@mcp.prompt()
+def review_diff() -> str:
+    """Review a code diff"""
+    with open(os.path.join(os.path.dirname(__file__), 'review.md'), 'r', encoding='utf-8') as f:
+        return f.read()
+```
+
+このプロンプトは以下の特徴があります：
+- `os.path.join(os.path.dirname(__file__), 'review.md')` で、`main.py` と同じディレクトリにある `review.md` ファイルのパスを取得
+- `open()` でファイルを開き、`read()` で内容を読み取る
+- ファイルの内容をそのままプロンプトとして返す
+- プロンプトの内容をファイルで管理できるため、長いテンプレートや複数のバージョンを管理しやすい
+
+### Webリクエストを使った処理
+
+外部APIにHTTPリクエストを送信することで、天気情報の取得、データベースへの問い合わせ、外部サービスの利用などが可能になります。これにより、MCPサーバの機能を大幅に拡張できます。
+
+WebページのHTMLを取得して解析する場合、HTTPリクエストを送信するためのライブラリとHTMLをパースするためのライブラリが必要です。
+
+まず、必要なライブラリをインストールします。
+
+```bash
+uv add requests beautifulsoup4
+```
+
+次に、Yahoo! JAPANのトップページから「主要 ニュース」セクションのニュース一覧を取得するツールを実装します。
+
+まず、必要なライブラリをインポートします。
+
+```python
+import requests
+from bs4 import BeautifulSoup
+```
+
+次に、Yahoo! JAPANのニュースを取得するツールを実装します。
+
+`mcp.tool()` は文字列だけでなく、JSONシリアライズ可能なデータ構造（辞書、リストなど）を返すこともできます。構造化されたデータを返すことで、AIアシスタントがより効率的にデータを処理できます。
+
+```python
+@mcp.tool()
+def get_yahoo_news() -> dict:
+    """Get the latest news headlines from Yahoo! JAPAN"""
+    try:
+        # Yahoo! JAPANのトップページにアクセス
+        response = requests.get("https://www.yahoo.co.jp/", timeout=10)
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+        
+        # HTMLをパース
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 「主要 ニュース」セクションを探す
+        # Yahoo! JAPANのHTML構造に応じてセレクタを調整
+        news_items = []
+        
+        # ニュース項目を取得（実際のHTML構造に合わせて調整が必要）
+        news_elements = soup.select('#tabpanelTopics1 article>a')
+        
+        for element in news_elements[:10]:  # 最大10件まで取得
+            text = element.get_text(strip=True)
+            if text and len(text) > 5:  # 空でない、かつある程度の長さがあるもののみ
+                # リンクがあれば取得
+                link = element.get('href', '')
+                if link and not link.startswith('http'):
+                    link = f"https://www.yahoo.co.jp{link}"
+                
+                news_items.append({
+                    "title": text,
+                    "url": link if link else None
+                })
+        
+        if news_items:
+            return {
+                "status": "success",
+                "count": len(news_items),
+                "news": news_items
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "ニュースが見つかりませんでした。HTML構造が変更されている可能性があります。"
+            }
+            
+    except requests.RequestException as e:
+        return {
+            "status": "error",
+            "message": f"リクエストエラー: {str(e)}"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"エラーが発生しました: {str(e)}"
+        }
+```
+
+このツールは以下の特徴があります：
+- `requests.get()` でYahoo! JAPANのトップページにHTTPリクエストを送信
+- `BeautifulSoup` でHTMLをパースし、ニュース項目を抽出
+- エラーハンドリングを実装し、リクエスト失敗時やパースエラー時に適切なメッセージを返す
+- **辞書形式で構造化されたデータを返す**ことで、AIアシスタントが各ニュースのタイトルやURLを個別に処理できる
+- 各ニュース項目にタイトルとURLを含めることで、より詳細な情報を提供
+
+**注意**: 実際のYahoo! JAPANのHTML構造に合わせて、セレクタ（`soup.select()` の引数）を調整する必要があります。ブラウザの開発者ツールでHTML構造を確認し、適切なセレクタを指定してください。
+
+以下のようにチャットに送信して作成したツールを実行すると、Yahoo! JAPANのトップページの主要タブのニュースの一覧が取得できます。
+
+```text
+最新のニュースを教えて
+```
